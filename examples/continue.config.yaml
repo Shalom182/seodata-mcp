@@ -1,0 +1,6 @@
+mcpServers:
+  - name: seodata
+    command: npx
+    args: ["-y", "github:Shalom182/seodata-mcp"]
+    env:
+      SEODATA_API_KEY: seo_ВАШ_КЛЮЧ
