@@ -1,0 +1,45 @@
+{
+  "name": "seodata-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for the SEO Combine (seodata.win) — plug-and-play LLM access to storefronts, articles, SEO audits, AI article generation and keyword positions via a single API key",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "seodata-mcp": "./index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test-client.mjs"
+  },
+  "files": [
+    "index.js",
+    "test-client.mjs",
+    "e2e-full-run.mjs"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "seo",
+    "serp",
+    "seo-tools",
+    "content-generation",
+    "llm",
+    "claude",
+    "cursor",
+    "seodata"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shalom182/seodata-mcp.git"
+  },
+  "homepage": "https://github.com/Shalom182/seodata-mcp#readme",
+  "bugs": "https://github.com/Shalom182/seodata-mcp/issues",
+  "mcpName": "io.github.shalom182/seodata-mcp",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0"
+  }
+}
