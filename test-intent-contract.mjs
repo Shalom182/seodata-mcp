@@ -9,7 +9,7 @@ for (const language of ["en", "ru", "ua", "jp", "ko", "pt-BR", "zh-CN", "zh-TW"]
     assert.deepEqual(validateGenerationArgs({...good, language}), { ok: true });
   });
 }
-for (const language of ["uk", "ja", "cn", "zh", "zh-cn", "zh-tw", "zh-Hans", "zh-Hant", "EN", "en_us", "pt-br", "en ", ""]) {
+for (const language of ["uk", "ja", "cn", "zh", "zh-cn", "zh-tw", "zh-Hans", "zh-Hant", "EN", "en_us", "pt-br", "en ", "", "zz", "fr", "fil", "xyz"]) {
   test("rejects legacy or noncanonical locale: " + JSON.stringify(language), () => {
     assert.deepEqual(validateGenerationArgs({...good, language}), {ok: false, error: "canonical_locale_required"});
   });
