@@ -32,3 +32,15 @@ export function supportsIntentFirstGenerate(openapi) {
     && Boolean(requestSchema.properties?.intentId)
     && Boolean(responses["422"]);
 }
+
+/** A timed-out write may already have run upstream; NEVER treat it as success or retry. */
+export function describeTransportFailure(method = "GET") {
+  const isWrite = String(method).toUpperCase() !== "GET";
+  return {
+    error: "network_error",
+    hint: isWrite
+      ? "The server response was lost: this write may have been accepted. Check existing job/article state before any manual retry; never retry automatically."
+      : "The server could not be reached. This is an MCP error, not a successful empty result.",
+    outcome: isWrite ? "unknown_may_have_committed" : "unavailable",
+  };
+}
