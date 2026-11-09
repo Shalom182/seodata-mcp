@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure } from "./intent-contract.mjs";
+import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure, safeConnectionStatus } from "./intent-contract.mjs";
 
 const good = { storefrontId: 13, intentId: 1, topic: "Free verification numbers", language: "en" };
 
@@ -45,4 +45,14 @@ test("failed POST is unknown, never reported as success or auto-retried", () => 
 });
 test("failed GET is unavailable, not a successful empty response", () => {
   assert.equal(describeTransportFailure("GET").outcome, "unavailable");
+});
+
+test("MCP status reports availability without disclosing any API-key prefix", () => {
+  const secret = "seo_abcd1234_DEMO_NOT_REAL";
+  const status = safeConnectionStatus("https://seodata.win", "https://seodata.win/api/public/v1", Boolean(secret), true);
+  assert.equal(status.apiKeyConfigured, true);
+  assert.equal(status.reachable, true);
+  assert.equal(status.apiKeyPrefix, undefined);
+  assert.equal(JSON.stringify(status).includes(secret), false);
+  assert.equal(JSON.stringify(status).includes("seo_abcd"), false);
 });
