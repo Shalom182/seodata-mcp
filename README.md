@@ -221,3 +221,12 @@ npm install && npm test
 ```
 
 License: MIT © Shalom182 (seodata.win)
+
+
+## Безопасный intent-first MCP (кандидат v1.1.0-rc.1; NOT PROD VERIFIED)
+
+Клиент сохраняет **ровно 10 tools**. Он НЕ получает права утверждать интенты, менять редакционный QA или публиковать статьи. `seodata_generate_article` требует **переданный владельцем** positive integer `intentId`, `storefrontId`, `topic` и явную каноническую `language`; без них HTTP-задание не создаётся. `ua` и `jp` сохраняются как внутренние коды, `zh-CN` и `zh-TW` не объединяются.
+
+**Fail-closed по умолчанию:** запись `SEODATA_ENABLE_GENERATION` отсутствует → `generation_disabled`. Только после отдельного разрешения владельца, независимой приёмки backend issue [marketing #160](https://github.com/Shalom182/marketing/issues/160), production deployed SHA/health и read-only smoke можно *осознанно* установить `SEODATA_ENABLE_GENERATION=1`. Перед генерацией MCP бесплатно проверяет live `/api/public/v1/openapi.json`: requestBody обязан содержать required `intentId` и 422 response. Это только подтверждение описанного контракта, **не proof** серверного approval — backend должен повторно проверить intent status, owner/project/storefront/cluster/locale до биллинга и очереди. Нет retry на платный вызов. Установку флага и paid smoke без согласия владельца НЕ выполнять.
+
+Offline-тесты без ключа, HTTP и расходов: `npm run test:offline` (Node.js >= 18). `npm test` — старый сетевой smoke, НЕ запускать автоматически. Никаких реальных ключей в примерах/коммитах. Отдельный план синхронизации: [MCP issue #1](https://github.com/Shalom182/seodata-mcp/issues/1); соответствующий backend-код у Kimi — [marketing PR #163](https://github.com/Shalom182/marketing/pull/163). До merge/deploy обоих контуров **MCP PROD NOT VERIFIED**.
