@@ -12,7 +12,13 @@ export function validateGenerationArgs(args) {
   if (typeof args.topic !== "string" || args.topic.trim().length < 3) {
     return { ok: false, error: "topic_required" };
   }
-  if (typeof args.language !== "string" || !args.language.trim()) {
+  // Use exact internal locale codes; never pass old uk/ja or lowercase zh variants.
+  // The backend still must validate this locale against approved intent and owner scope.
+  const locale = args.language;
+  const canonicalFormat = typeof locale === "string" && /^(?:[a-z]{2,3}|[a-z]{2,3}-[A-Z]{2})$/.test(locale);
+  const legacyOrAmbiguous = ["uk", "ja", "cn", "zh"].includes(locale)
+    || (typeof locale === "string" && locale.startsWith("zh-") && !["zh-CN", "zh-TW"].includes(locale));
+  if (!canonicalFormat || legacyOrAmbiguous) {
     return { ok: false, error: "canonical_locale_required" };
   }
   return { ok: true };
