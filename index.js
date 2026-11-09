@@ -17,7 +17,7 @@
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure } from "./intent-contract.mjs";
+import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure, safeConnectionStatus } from "./intent-contract.mjs";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
@@ -428,13 +428,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
           uri,
           mimeType: "application/json",
           text: JSON.stringify(
-            {
-              baseUrl: BASE_URL,
-              api: API,
-              apiKeyConfigured: Boolean(API_KEY),
-              apiKeyPrefix: API_KEY ? API_KEY.slice(0, 8) + "…" : null,
-              reachable,
-            },
+            safeConnectionStatus(BASE_URL, API, Boolean(API_KEY), reachable),
             null,
             2,
           ),
