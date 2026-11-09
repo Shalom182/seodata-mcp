@@ -3,6 +3,18 @@ import assert from "node:assert/strict";
 import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure } from "./intent-contract.mjs";
 
 const good = { storefrontId: 13, intentId: 1, topic: "Free verification numbers", language: "en" };
+
+for (const language of ["en", "ru", "ua", "jp", "ko", "pt-BR", "zh-CN", "zh-TW"]) {
+  test("accepts canonical locale: " + language, () => {
+    assert.deepEqual(validateGenerationArgs({...good, language}), { ok: true });
+  });
+}
+for (const language of ["uk", "ja", "cn", "zh", "zh-cn", "zh-tw", "zh-Hans", "zh-Hant", "EN", "en_us", "pt-br", "en ", ""]) {
+  test("rejects legacy or noncanonical locale: " + JSON.stringify(language), () => {
+    assert.deepEqual(validateGenerationArgs({...good, language}), {ok: false, error: "canonical_locale_required"});
+  });
+}
+
 test("valid explicit intent and locale", () => {
   assert.deepEqual(validateGenerationArgs(good), { ok: true });
 });
