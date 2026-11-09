@@ -148,7 +148,7 @@ cd seodata-mcp && npm install
 ```bash
 npm install
 npm run test:offline              # без ключа, сети, платных API и публикации
-npm test                          # локальный MCP handshake/tools/resources, без production
+npm test                          # MCP handshake + сетевой GET status/OpenAPI; при ключе — ещё read-only API
 # НЕ запускать e2e-full-run.mjs: live E2E может вызвать POST и платную генерацию.
 # Требуется отдельное согласие владельца, проверка backend gate и лимитов.
 # При сетевом сбое POST итог UNKNOWN: никаких автоматических повторов.
