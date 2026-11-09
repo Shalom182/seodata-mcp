@@ -53,3 +53,13 @@ export function describeTransportFailure(method = "GET") {
     outcome: isWrite ? "unknown_may_have_committed" : "unavailable",
   };
 }
+
+/** Never return token prefixes or any credential bytes in public MCP resources. */
+export function safeConnectionStatus(baseUrl, api, configured, reachable) {
+  return {
+    baseUrl,
+    api,
+    apiKeyConfigured: Boolean(configured),
+    reachable: Boolean(reachable),
+  };
+}
