@@ -13,6 +13,8 @@ SEO-аудитам, AI-генерации контента и позициям �
 
 ---
 
+**Статус P0 (2026-11-09):** GitHub `main` этого MCP-репозитория остаётся старой версией, а изменения intent-first расположены только в `fix/intent-first-safe-adapter-20261109` (CODE ONLY). До независимого production SHA/health/authenticated API-проверки `seodata_generate_article` должен оставаться выключенным (`SEODATA_ENABLE_GENERATION` не установлен). Публичная публикация запрещена; только combiner admin-gate с явно утверждённым интентом. OpenAPI capability probe необходим, но сам по себе не подтверждает owner scope и не является разрешением на расход.
+
 ## Быстрый старт
 
 ### 0. Получить ключ
@@ -100,7 +102,7 @@ cd seodata-mcp && npm install
 | `seodata_get_page` | Статическая страница витрины | content:read |
 | `seodata_search` | Поиск по всему опубликованному контенту | content:read |
 | `seodata_run_audit` | SEO-аудит домена (~5–15 с): score + проверки; опционально сохраняет в витрину | audit:run |
-| `seodata_generate_article` | AI-генерация статьи в фоне → jobId (статья упадёт черновиком) | generate:run |
+| `seodata_generate_article` | **ЗАБЛОКИРОВАНО по умолчанию**: после отдельного разрешения, подтверждённого server SHA и OpenAPI capability probe — approved intentId → фоновая генерация черновика, без публикации и автоматических retry | generate:run |
 | `seodata_get_job` | Статус фоновой задачи + результат/ошибка | jobs:read |
 | `seodata_get_positions` | Позиции ключей витрины за 30 дней | positions:read |
 
@@ -116,7 +118,7 @@ cd seodata-mcp && npm install
 - «Какие у меня витрины и что на них опубликовано?» → `list_storefronts` → `list_articles`
 - «Найди статью про X и перепиши» → `search` → `get_article`
 - «Проведи SEO-аудит домена» → `run_audit`
-- «Напиши статью про X на витрину Y» → `generate_article` → поллинг `get_job` → черновик в админке
+- «Напиши статью про X на витрину Y» → **не запускать** без согласия владельца на платный API-вызов, owner-scoped approved `intentId`, канонической локали и проверенного production backend gate. Только после разрешения: `generate_article` → `get_job` → черновик в админке, никакой автопубликации
 - «Как движутся позиции?» → `get_positions`
 
 Ошибки API приходят нейросети с полем `hint` на русском: что случилось
@@ -145,8 +147,11 @@ cd seodata-mcp && npm install
 
 ```bash
 npm install
-npm test                          # initialize, tools/resources, обработка ошибок
-SEODATA_API_KEY=seo_... node e2e-full-run.mjs   # полный боевой прогон всех методов
+npm run test:offline              # без ключа, сети, платных API и публикации
+npm test                          # локальный MCP handshake/tools/resources, без production
+# НЕ запускать e2e-full-run.mjs: live E2E может вызвать POST и платную генерацию.
+# Требуется отдельное согласие владельца, проверка backend gate и лимитов.
+# При сетевом сбое POST итог UNKNOWN: никаких автоматических повторов.
 ```
 
 ## Файлы
