@@ -55,6 +55,22 @@ export function describeTransportFailure(method = "GET") {
 }
 
 /** Never return token prefixes or any credential bytes in public MCP resources. */
+/** Only explicitly recognized public error codes may reach MCP clients. */
+export function safeApiErrorCode(status, code) {
+  const allowed = new Set([
+    "no_api_key", "network_error", "generation_disabled", "backend_contract_unverified",
+    "storefront_id_required", "approved_intent_id_required", "topic_required",
+    "canonical_locale_required", "unauthorized", "forbidden", "not_found",
+    "rate_limited", "daily_quota_exceeded", "invalid_request", "conflict",
+    "intent_required", "intent_not_approved", "intent_mismatch",
+    "intent_scope_mismatch", "invalid_locale",
+  ]);
+  if (typeof code === "string" && allowed.has(code)) return code;
+  return Number.isInteger(status) && status >= 0 && status <= 599
+    ? `http_${status}`
+    : "api_error";
+}
+
 export function safeConnectionStatus(baseUrl, api, configured, reachable) {
   return {
     baseUrl,
