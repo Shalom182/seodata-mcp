@@ -17,7 +17,7 @@
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure, safeConnectionStatus } from "./intent-contract.mjs";
+import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure, safeConnectionStatus, safeApiErrorCode } from "./intent-contract.mjs";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
@@ -84,10 +84,10 @@ async function apiFetch(path, { method = "GET", body } = {}) {
 /** Человекочитаемое описание ошибок API для нейросети. */
 function explainError(err) {
   if (!(err instanceof ApiError)) {
-    return { error: "internal_error", hint: String(err?.message ?? err) };
+    return { error: "internal_error", hint: "Internal MCP error; diagnostics are not exposed to clients." };
   }
-  const body = err.body ?? {};
-  const base = { error: body.error ?? `http_${err.status}`, status: err.status };
+  const body = err.body && typeof err.body === "object" ? err.body : {};
+  const base = { error: safeApiErrorCode(err.status, body.error), status: err.status };
   switch (err.status) {
     case 0:
       return body.error === "network_error"
@@ -104,22 +104,28 @@ function explainError(err) {
     case 403:
       return {
         ...base,
-        hint: `У ключа нет scope «${body.need ?? "?"}». Добавьте scope при создании ключа в админке либо используйте ключ с нужными правами.`,
+        hint: "У API-ключа недостаточно прав. Проверьте его scope в админке.",
       };
     case 404:
       return {
         ...base,
-        hint: body.detail ?? "Объект не найден либо принадлежит другому владельцу. Уточните slug/id через seodata_list_storefronts / seodata_list_articles.",
+        hint: "Объект не найден либо принадлежит другому владельцу. Уточните slug/id через seodata_list_storefronts / seodata_list_articles.",
       };
     case 429:
       return {
         ...base,
         hint: body.error === "rate_limited"
           ? "Превышен минутный лимит (60 запросов/мин). Подождите минуту."
-          : `Исчерпана дневная квота ключа (${body.dailyQuota ?? "?"} запросов/день). Квота сбросится в 00:00 UTC либо попросите поднять dailyQuota в админке.`,
+          : "Квота API исчерпана. Проверьте ограничения ключа в админке.",
       };
+    case 409:
+      return { ...base, hint: "Конфликт. Проверьте существующие jobs/articles перед ручным повтором; не повторяйте POST автоматически." };
+    case 412:
+      return { ...base, hint: "Генерация отключена или защищённый контракт backend не подтверждён." };
+    case 422:
+      return { ...base, hint: "Backend отклонил интент, локаль или scope. Проверьте approved intentId и права владельца." };
     default:
-      return { ...base, detail: body.detail ?? body.raw };
+      return { ...base, hint: "API вернул ошибку. Внутренние детали скрыты; проверьте логи на сервере." };
   }
 }
 
