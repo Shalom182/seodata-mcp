@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateGenerationArgs, supportsIntentFirstGenerate } from "./intent-contract.mjs";
+import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure } from "./intent-contract.mjs";
 
 const good = { storefrontId: 13, intentId: 1, topic: "Free verification numbers", language: "en" };
 test("valid explicit intent and locale", () => {
@@ -23,4 +23,14 @@ test("requires negative intent rejection response", () => {
 });
 test("accepts documented required intent plus 422", () => {
   assert.equal(supportsIntentFirstGenerate({paths: {"/api/public/v1/articles/generate": {post:operation}}}), true);
+});
+
+test("failed POST is unknown, never reported as success or auto-retried", () => {
+  const result = describeTransportFailure("POST");
+  assert.equal(result.error, "network_error");
+  assert.equal(result.outcome, "unknown_may_have_committed");
+  assert.match(result.hint, /never retry automatically/i);
+});
+test("failed GET is unavailable, not a successful empty response", () => {
+  assert.equal(describeTransportFailure("GET").outcome, "unavailable");
 });
