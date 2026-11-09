@@ -15,10 +15,13 @@ export function validateGenerationArgs(args) {
   // Use exact internal locale codes; never pass old uk/ja or lowercase zh variants.
   // The backend still must validate this locale against approved intent and owner scope.
   const locale = args.language;
-  const canonicalFormat = typeof locale === "string" && /^(?:[a-z]{2,3}|[a-z]{2,3}-[A-Z]{2})$/.test(locale);
-  const legacyOrAmbiguous = ["uk", "ja", "cn", "zh"].includes(locale)
-    || (typeof locale === "string" && locale.startsWith("zh-") && !["zh-CN", "zh-TW"].includes(locale));
-  if (!canonicalFormat || legacyOrAmbiguous) {
+  // Match the explicit MCP language enum, not just a plausible-looking tag:
+  // an unknown locale is NOT evidence of a matching approved registry intent.
+  const allowedCanonicalLocales = new Set([
+    "ru", "en", "es", "tr", "id", "vi", "ua", "jp", "ko",
+    "zh-CN", "zh-TW", "pt-BR", "de", "pt", "ar",
+  ]);
+  if (typeof locale !== "string" || !allowedCanonicalLocales.has(locale)) {
     return { ok: false, error: "canonical_locale_required" };
   }
   return { ok: true };
