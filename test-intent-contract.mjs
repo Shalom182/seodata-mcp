@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure, safeConnectionStatus } from "./intent-contract.mjs";
+import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure, safeConnectionStatus, safeApiErrorCode } from "./intent-contract.mjs";
 
 const good = { storefrontId: 13, intentId: 1, topic: "Free verification numbers", language: "en" };
 
@@ -55,4 +55,12 @@ test("MCP status reports availability without disclosing any API-key prefix", ()
   assert.equal(status.apiKeyPrefix, undefined);
   assert.equal(JSON.stringify(status).includes(secret), false);
   assert.equal(JSON.stringify(status).includes("seo_abcd"), false);
+});
+
+test("error codes redact internal details, preserve public errors", () => {
+  assert.equal(safeApiErrorCode(500, "sql_private_password"), "http_500");
+  assert.equal(safeApiErrorCode(400, "DB password=SECRET"), "http_400");
+  assert.equal(safeApiErrorCode(503, undefined), "http_503");
+  assert.equal(safeApiErrorCode(422, "intent_not_approved"), "intent_not_approved");
+  assert.equal(safeApiErrorCode(0, "network_error"), "network_error");
 });
