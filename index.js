@@ -17,6 +17,7 @@
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { validateGenerationArgs, supportsIntentFirstGenerate } from "./intent-contract.mjs";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
@@ -29,7 +30,7 @@ const API = `${BASE_URL}/api/public/v1`;
 const API_KEY = (process.env.SEODATA_API_KEY ?? "").trim();
 
 const SERVER_NAME = "seodata-mcp";
-const SERVER_VERSION = "1.0.0";
+const SERVER_VERSION = "1.1.0-rc.1";
 
 // ---------------------------------------------------------------------------
 // HTTP-слой
@@ -128,6 +129,37 @@ function fail(err) {
 }
 
 // ---------------------------------------------------------------------------
+// Free read-only preflight, required before invoking a paid generation job.
+// The backend (NOT the MCP adapter) must still approve the intent and scope.
+// ---------------------------------------------------------------------------
+
+async function ensureSafeGenerationPreflight() {
+  if (process.env.SEODATA_ENABLE_GENERATION !== "1") {
+    throw new ApiError(412, {
+      error: "generation_disabled",
+      detail: "Paid generation is disabled by default. Explicit owner approval and SEODATA_ENABLE_GENERATION=1 are required AFTER verified backend deployment.",
+    });
+  }
+  let spec;
+  try {
+    const response = await fetch(`${API}/openapi.json`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error("OpenAPI not available");
+    spec = await response.json();
+  } catch {
+    throw new ApiError(412, { error: "backend_contract_unverified" });
+  }
+  if (!supportsIntentFirstGenerate(spec)) {
+    throw new ApiError(412, {
+      error: "backend_contract_unverified",
+      detail: "Backend must document required intentId and 422 intent rejection.",
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Инструменты (1:1 поверх /api/public/v1)
 // ---------------------------------------------------------------------------
 
@@ -216,19 +248,20 @@ const TOOLS = [
   {
     name: "seodata_generate_article",
     description:
-      "Запуск AI-генерации статьи в фоне (очередь комбайна). Возвращает jobId — статус смотри через seodata_get_job; готовая статья появится черновиком витрины. Scope: generate:run.",
+      "ОПЛАЧИВАЕМАЯ генерация, выключена по умолчанию. Только после разрешения владельца, проверенного backend intent-gate и явного approved intentId. Возвращает jobId, итог — черновик без автопубликации. Никаких автоматических повторов. Scope: generate:run.",
     inputSchema: {
       type: "object",
       properties: {
         storefrontId: { type: "number", description: "Id витрины (число из seodata_list_storefronts)" },
+        intentId: { type: "integer", minimum: 1, description: "Утверждённый вручную ID approved-интента этой витрины, проекта и локали. Не придумывать." },
         topic: { type: "string", description: "Тема статьи, 3–2000 символов" },
         keywords: { type: "string", description: "Ключевые слова через запятую (до 1000 символов)" },
         keywordId: { type: "number", description: "Id главного ключа из панорамы — статья пишется строго под него" },
         tone: { type: "string", enum: ["expert", "selling", "friendly", "neutral"], description: "Тон (по умолчанию expert)" },
-        language: { type: "string", enum: ["ru", "en", "es", "tr", "id", "vi", "zh", "de", "pt", "ar"], description: "Язык (по умолчанию ru)" },
+        language: { type: "string", enum: ["ru", "en", "es", "tr", "id", "vi", "ua", "jp", "ko", "zh-CN", "zh-TW", "pt-BR", "de", "pt", "ar"], description: "Явная каноническая локаль статьи: ua/jp внутренние коды; zh-CN и zh-TW не объединять." },
         length: { type: "string", enum: ["short", "medium", "long"], description: "Объём (по умолчанию medium)" },
       },
-      required: ["storefrontId", "topic"],
+      required: ["storefrontId", "intentId", "topic", "language"],
       additionalProperties: false,
     },
   },
@@ -298,12 +331,14 @@ const HANDLERS = {
     });
   },
   async seodata_generate_article(args) {
-    const { storefrontId, topic, keywords, keywordId, tone, language, length } = args;
-    const body = { storefrontId, topic };
+    const validation = validateGenerationArgs(args);
+    if (!validation.ok) throw new ApiError(400, { error: validation.error });
+    await ensureSafeGenerationPreflight();
+    const { storefrontId, intentId, topic, keywords, keywordId, tone, language, length } = args;
+    const body = { storefrontId, intentId, topic, language };
     if (keywords !== undefined) body.keywords = keywords;
     if (keywordId !== undefined) body.keywordId = keywordId;
     if (tone !== undefined) body.tone = tone;
-    if (language !== undefined) body.language = language;
     if (length !== undefined) body.length = length;
     return apiFetch("/articles/generate", { method: "POST", body });
   },
