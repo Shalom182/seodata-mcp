@@ -17,7 +17,7 @@
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { validateGenerationArgs, supportsIntentFirstGenerate } from "./intent-contract.mjs";
+import { validateGenerationArgs, supportsIntentFirstGenerate, describeTransportFailure } from "./intent-contract.mjs";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
@@ -59,15 +59,16 @@ async function apiFetch(path, { method = "GET", body } = {}) {
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  } catch (err) {
-    return {
-      ok: false,
-      status: 0,
-      error: "network_error",
-      hint: `Не удалось достучаться до ${BASE_URL}: ${err?.message ?? err}`,
-    };
+  } catch {
+    throw new ApiError(0, describeTransportFailure(method));
   }
-  const text = await res.text();
+  let text;
+  try {
+    text = await res.text();
+  } catch {
+    // Request may have committed even when the response body is lost.
+    throw new ApiError(0, describeTransportFailure(method));
+  }
   let json = null;
   try {
     json = text ? JSON.parse(text) : null;
@@ -89,10 +90,12 @@ function explainError(err) {
   const base = { error: body.error ?? `http_${err.status}`, status: err.status };
   switch (err.status) {
     case 0:
-      return {
-        ...base,
-        hint: "Не задан SEODATA_API_KEY. Возьмите ключ вида seo_... в админке комбайна (раздел «API-ключи») и добавьте его в env конфигурации MCP-сервера.",
-      };
+      return body.error === "network_error"
+        ? { ...base, hint: body.hint, outcome: body.outcome }
+        : {
+          ...base,
+          hint: "Не задан SEODATA_API_KEY. Возьмите ключ вида seo_... в админке комбайна (раздел «API-ключи») и добавьте его в env конфигурации MCP-сервера.",
+        };
     case 401:
       return {
         ...base,
